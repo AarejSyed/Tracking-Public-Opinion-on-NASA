@@ -35,17 +35,29 @@ def preprocess_text(text):
     text = text.strip()
     return text
 
+# Function to map sentiment scores to discrete ratings
+def map_sentiment_to_rating(score):
+    if score > 0.05:  # Positive sentiment threshold
+        return 1
+    elif score < -0.05:  # Negative sentiment threshold
+        return -1
+    else:  # Neutral sentiment
+        return 0
+
 # Get sentiment scores using different analyzers
 def get_sentiment_scores(text):
     # VADER sentiment
     vader_scores = vader_analyzer.polarity_scores(text)
+    vader_compound = vader_scores['compound']
+    vader_rating = map_sentiment_to_rating(vader_compound)
     
     # TextBlob sentiment
     textblob_sentiment = TextBlob(text).sentiment.polarity
+    textblob_rating = map_sentiment_to_rating(textblob_sentiment)
     
     return {
-        'vader': vader_scores['compound'],
-        'textblob': textblob_sentiment
+        'vader': vader_rating,
+        'textblob': textblob_rating
     }
 
 parameters = {
