@@ -1,7 +1,7 @@
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import RobertaTokenizer, RobertaForSequenceClassification
 from transformers import get_scheduler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
@@ -10,14 +10,14 @@ from sklearn.metrics import accuracy_score, classification_report
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 # Load the dataset
-df = pd.read_csv("posts.csv")
+df = pd.read_csv("posts.csv", encoding="utf-8", encoding_errors="replace")
 
-# Drop rows with missing values
-df = df.dropna()
+# Drop rows with missing values in 'text' or 'score'
+df = df.dropna(subset=["text", "score"])
 
 # Remap labels from (-1, 0, 1) to (0, 1, 2)
 label_mapping = {-1: 0, 0: 1, 1: 2}
-df["mapped_label"] = df["label"].map(label_mapping)
+df["mapped_label"] = df["score"].map(label_mapping)
 
 texts = df["text"].tolist()
 labels = df["mapped_label"].tolist()
@@ -28,7 +28,7 @@ train_texts, test_texts, train_labels, test_labels = train_test_split(
 )
 
 # Tokenizer
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
 # Dataset class
 class SentimentDataset(Dataset):
@@ -66,7 +66,7 @@ train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=16)
 
 # Model
-model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
+model = RobertaForSequenceClassification.from_pretrained("roberta-base", num_labels=3)
 model.to(device)
 
 # Optimizer and scheduler
@@ -127,11 +127,11 @@ all_labels = [reverse_map[label] for label in all_labels]
 # Save predictions to a new CSV file
 output_df = pd.DataFrame({
     "text": all_texts,  # Original texts from the test set
-    "true_label": all_labels,  # True labels
-    "predicted_label": all_predictions  # Model predictions
+    "true_score": all_labels,  # True labels
+    "predicted_score": all_predictions  # Model predictions
 })
-output_df.to_csv("model_predictions.csv", index=False)
-print("Predictions saved to model_predictions.csv")
+output_df.to_csv("roberta_model_predictions.csv", index=False)
+print("Predictions saved to roberta_model_predictions.csv")
 
 # Report
 print("Accuracy:", accuracy_score(all_labels, all_predictions))
@@ -139,8 +139,8 @@ print("Classification Report:")
 print(classification_report(all_labels, all_predictions, target_names=["Negative", "Neutral", "Positive"]))
 
 # Save model
-model.save_pretrained("bert_sentiment_model")
-tokenizer.save_pretrained("bert_sentiment_model")
+model.save_pretrained("roberta_sentiment_model")
+tokenizer.save_pretrained("roberta_sentiment_model")
 
 # Prediction function with reverse mapping
 def predict_sentiment(text):
